@@ -1,0 +1,26 @@
+<?php
+
+use Arpon\Database\Schema\Blueprint;
+use Arpon\Database\Schema\Schema;
+
+return new class
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('table_name', function (Blueprint $table) {
+            $table->id();
+            $table->timestamps();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('table_name');
+    }
+};

@@ -1,0 +1,28 @@
+{
+    "name": "arpon/framework",
+    "description": "A custom PHP framework by Arpon",
+    "type": "library",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Arpon\\": "src/Arpon/"
+        },
+        "files": [
+            "src/Arpon/Support/helpers.php"
+        ]
+    },
+    "authors": [
+        {
+            "name": "Your Name",
+            "email": "your@example.com"
+        }
+    ],
+
+    "minimum-stability": "dev",
+    "require": {
+      "vlucas/phpdotenv": "^5.0",
+      "ext-pdo": "*",
+      "ext-fileinfo": "*",
+      "phpmailer/phpmailer": "dev-master"
+    }
+}
