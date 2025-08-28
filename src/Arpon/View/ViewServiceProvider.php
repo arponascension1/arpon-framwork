@@ -13,7 +13,7 @@ class ViewServiceProvider extends ServiceProvider
         $this->app->singleton('view', function ($app) {
             $files = $app['files']; // Assuming 'files' is bound to Filesystem
             $viewPath = $app->basePath() . '/resources/views';
-            $coreViewPath = $app->basePath() . '/src/Arpon/View';
+            $coreViewPath = __DIR__; 
             $factory = new Factory($files, [$viewPath, $coreViewPath]);
 
             return $factory;
