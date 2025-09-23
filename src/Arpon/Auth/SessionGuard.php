@@ -173,4 +173,9 @@ class SessionGuard implements Guard
     {
         $this->user = $user;
     }
+
+    public function getProvider(): UserProvider
+    {
+        return $this->provider;
+    }
 }

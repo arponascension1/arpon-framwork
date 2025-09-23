@@ -114,14 +114,35 @@ class SQLiteGrammar extends Grammar
      * @param  array  $columns
      * @return string
      */
-    public function compileCreate(Blueprint $blueprint, array $columns): string
+    public function compileCreate(Blueprint $blueprint, array $columns, array $commands = []): string
     {
         $columnsSql = [];
         foreach ($columns as $column) {
             $columnsSql[] = $this->compileColumn($column);
         }
 
+        foreach ($commands as $command) {
+            if ($command instanceof \Arpon\Database\Schema\ForeignKeyDefinition) {
+                $columnsSql[] = $this->compileForeign($blueprint, $command->toSql());
+            }
+        }
+
         $sql = 'CREATE TABLE ' . $this->wrapTable($blueprint->getTable()) . ' (' . implode(', ', $columnsSql) . ')';
+
+        return $sql;
+    }
+
+    public function compileForeign(Blueprint $blueprint, array $command): string
+    {
+        $sql = "FOREIGN KEY (" . $this->wrap($command['column']) . ") REFERENCES " . $this->wrapTable($command['on']) . " (" . $this->wrap($command['references']) . ")";
+
+        if (isset($command['onDelete'])) {
+            $sql .= " ON DELETE " . strtoupper($command['onDelete']);
+        }
+
+        if (isset($command['onUpdate'])) {
+            $sql .= " ON UPDATE " . strtoupper($command['onUpdate']);
+        }
 
         return $sql;
     }

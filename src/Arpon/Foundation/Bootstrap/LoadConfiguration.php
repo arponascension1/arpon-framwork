@@ -31,7 +31,7 @@ class LoadConfiguration
     protected function loadConfigurationFiles(Application $app): array
     {
         $files = [];
-        $configPath = realpath($app->configPath());
+        $configPath = $app->configPath();
 
         foreach (glob($configPath . '/*.php') as $file) {
             $files[basename($file, '.php')] = $file;

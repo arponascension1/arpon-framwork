@@ -272,7 +272,7 @@ class Blueprint
         $statements = [];
 
         if ($method === 'create') {
-            $statements[] = $this->grammar->compileCreate($this, $this->columns);
+            $statements[] = $this->grammar->compileCreate($this, $this->columns, $this->commands);
         } elseif ($method === 'alter') {
             $statements[] = $this->grammar->compileAlter($this, $this->columns);
         } elseif ($method === 'drop') {
@@ -281,13 +281,15 @@ class Blueprint
             $statements[] = $this->grammar->compileDropIfExists($this);
         }
 
-        foreach ($this->commands as $command) {
-            if ($command instanceof ForeignKeyDefinition) {
-                $statements[] = $this->grammar->compileForeign($this, $command->toSql());
-            } else if (is_array($command) && isset($command['name'])) {
-                $methodName = 'compile' . ucfirst($command['name']);
-                if (method_exists($this->grammar, $methodName)) {
-                    $statements[] = $this->grammar->$methodName($this, $command);
+        if ($method !== 'create') {
+            foreach ($this->commands as $command) {
+                if ($command instanceof ForeignKeyDefinition) {
+                    $statements[] = $this->grammar->compileForeign($this, $command->toSql());
+                } else if (is_array($command) && isset($command['name'])) {
+                    $methodName = 'compile' . ucfirst($command['name']);
+                    if (method_exists($this->grammar, $methodName)) {
+                        $statements[] = $this->grammar->$methodName($this, $command);
+                    }
                 }
             }
         }

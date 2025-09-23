@@ -1,6 +1,6 @@
 <?php
 
-// src/Arpon/Foundation/Application.php
+
 
 namespace Arpon\Foundation;
 
@@ -12,6 +12,8 @@ use Arpon\Contracts\Http\Kernel;
 use Arpon\Routing\RoutingServiceProvider;
 use Arpon\Support\ServiceProvider;
 use Arpon\View\ViewServiceProvider;
+use Arpon\Console\Input\ArgvInput;
+use Arpon\Contracts\Console\Kernel as ConsoleKernel;
 
 /**
  * The main application class.
@@ -67,18 +69,37 @@ class Application extends Container implements \Arpon\Contracts\Foundation\Appli
             $this->setBasePath($basePath);
         }
 
-        // Add this line to set the static instance
         static::setInstance($this);
 
-        // Bind the router instance very early
-        $this->instance('router', new \Arpon\Routing\Router($this));
-
         $this->registerBaseBindings();
-        $this->registerCoreBindings();
-        $this->registerFacades();
-        $this->registerCoreContainerAliases();
-        $this->registerCoreProviders();
-        $this->registerCoreAliases();
+    }
+
+    /**
+     * @throws Exception
+     */
+    public static function configure($basePath): object
+    {
+        $app = new static(dirname($basePath));
+
+        (new \Arpon\Foundation\Bootstrap\LoadEnvironmentVariables)->bootstrap($app);
+        (new \Arpon\Foundation\Bootstrap\LoadConfiguration)->bootstrap($app);
+
+        $app->registerFacades();
+        $app->instance('router', new \Arpon\Routing\Router($app));
+
+        return new ApplicationBuilder($app);
+    }
+
+
+    /**
+     * @throws Exception
+     */
+    public function handleRequest($request): void
+    {
+        $this->boot();
+        $kernel = $this->make(\Arpon\Contracts\Http\Kernel::class);
+        $response = $kernel->handle($request);
+        $response->send();
     }
 
     /**
@@ -86,7 +107,7 @@ class Application extends Container implements \Arpon\Contracts\Foundation\Appli
      *
      * @return void
      */
-    protected function registerCoreProviders(): void
+    public function registerCoreProviders(): void
     {
         foreach ($this->coreProviders as $provider) {
             $this->register($provider);
@@ -98,7 +119,7 @@ class Application extends Container implements \Arpon\Contracts\Foundation\Appli
      *
      * @return void
      */
-    protected function registerCoreAliases(): void
+    public function registerCoreAliases(): void
     {
         foreach ($this->coreAliases as $abstract => $alias) {
             $this->alias($abstract, $alias);
@@ -123,7 +144,7 @@ class Application extends Container implements \Arpon\Contracts\Foundation\Appli
         $this->singleton(
             Kernel::class,
             function ($app) {
-                return new \App\Http\Kernel($app, $app->make('router'), new \Arpon\Foundation\Exceptions\Handler());
+                return new \Arpon\Http\Kernel($app, $app->make('router'), new \Arpon\Foundation\Exceptions\Handler());
             }
         );
     }
@@ -502,7 +523,7 @@ class Application extends Container implements \Arpon\Contracts\Foundation\Appli
         return isset($this->aliases[$name]);
     }
 
-    protected function registerCoreBindings(): void
+    public function registerCoreBindings(): void
     {
         $this->singleton(
             \Arpon\Contracts\Console\Kernel::class,
@@ -514,12 +535,12 @@ class Application extends Container implements \Arpon\Contracts\Foundation\Appli
         $this->singleton(
             \Arpon\Contracts\Http\Kernel::class,
             function ($app) {
-                return new \App\Http\Kernel($app, $app->make('router'));
+                return new \Arpon\Http\Kernel($app, $app->make('router'), new \Arpon\Foundation\Exceptions\Handler());
             }
         );
 
         $this->singleton(\Arpon\Database\Migrator::class, function ($app) {
-            return new \Arpon\Database\Migrator($app->make('db'));
+            return new \Arpon\Database\Migrator($app->make('db'), $app);
         });
 
         $this->singleton(\Arpon\Security\Csrf::class, function ($app) {
@@ -532,5 +553,55 @@ class Application extends Container implements \Arpon\Contracts\Foundation\Appli
         \Arpon\Support\Facades\Facade::setFacadeApplication($this);
     }
 
-    
+    /**
+     * @throws Exception
+     */
+    public function handleCommand(ArgvInput $input)
+    {
+        $this->boot();
+
+        $commandName = $input->getFirstArgument();
+        $commandArgs = array_slice($input->getTokens(), 1);
+
+        $kernel = $this->make(ConsoleKernel::class);
+        $commands = $kernel->getCommands();
+
+        $processedCommands = [];
+        foreach ($commands as $key => $class) {
+            if (is_int($key)) {
+                $commandInstance = $this->make($class);
+                $signature = $commandInstance->getSignature();
+                $name = explode(' ', $signature)[0];
+                $processedCommands[$name] = $class;
+            } else {
+                $processedCommands[$key] = $class;
+            }
+        }
+
+        if ($commandName && isset($processedCommands[$commandName])) {
+            $commandClass = $processedCommands[$commandName];
+            $command = $this->make($commandClass);
+
+            $parsedArgs = [];
+            $parsedOptions = [];
+            foreach ($commandArgs as $arg) {
+                if (str_starts_with($arg, '--')) {
+                    $parts = explode('=', substr($arg, 2), 2);
+                    $parsedOptions[$parts[0]] = $parts[1] ?? true;
+                } else {
+                    $parsedArgs[] = $arg;
+                }
+            }
+
+            return $command->handle($parsedArgs, $parsedOptions);
+        }
+
+        echo "Available commands:\n";
+        foreach ($processedCommands as $name => $class) {
+            $command = $this->make($class);
+            $description = $command->getDescription();
+            echo "  {$name}: {$description}\n";
+        }
+        return 1;
+    }
 }

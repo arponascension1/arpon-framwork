@@ -98,7 +98,7 @@ class BelongsToMany extends Relation
 
 
         $this->performJoin();
-        $this->addConstraints();
+        // $this->addConstraints(); // Removed for eager loading fix
     }
 
     /**
@@ -197,6 +197,8 @@ class BelongsToMany extends Relation
      */
     public function match(array $models, Collection $results, string $relation): array
     {
+        
+
         $dictionary = $this->buildDictionary($results);
 
         foreach ($models as $model) {
@@ -221,7 +223,7 @@ class BelongsToMany extends Relation
         foreach ($results as $result) { // $result is a Model instance of the related type (e.g., Role)
             // The pivot data should have been loaded onto the $result model by selectPivotColumns
             // and QueryBuilder hydration. We need to access `pivot_{parentKey}`.
-            $parentKeyValue = $result->getAttribute('pivot_' . $this->parentKey);
+            $parentKeyValue = $result->getAttributes()['pivot_' . $this->parentKey];
 
             // Create a new instance of the related model (e.g., Role)
             // and hydrate it with non-pivot attributes.
@@ -247,6 +249,8 @@ class BelongsToMany extends Relation
                 $modelInstance->setPivotData($this->relationName, (object)$pivotAttributes);
             }
 
+            
+
             $dictionary[$parentKeyValue][] = $modelInstance;
         }
         return $dictionary;
@@ -260,9 +264,9 @@ class BelongsToMany extends Relation
      */
     public function getResults(): Collection
     {
-        // addConstraints and performJoin already set up the query.
-        // QueryBuilder::get() should return a Collection of hydrated Models.
         $this->selectPivotColumns(); // Ensure pivot columns are selected for lazy loading too
+
+
         return $this->query->get();
     }
 
@@ -305,5 +309,40 @@ class BelongsToMany extends Relation
         $this->withTimestamps = true;
         // $this->selectPivotColumns(); // QueryBuilder will call this
         return $this;
+    }
+
+    public function getTable(): string
+    {
+        return $this->table;
+    }
+
+    public function getParentKey(): string
+    {
+        return $this->parentKey;
+    }
+
+    public function getRelatedKey(): string
+    {
+        return $this->relatedKey;
+    }
+
+    public function getParentLocalKey(): string
+    {
+        return $this->localKey;
+    }
+
+    public function getRelatedLocalKey(): string
+    {
+        return $this->relatedLocalKey;
+    }
+
+    public function getForeignKey(): string
+    {
+        return $this->foreignKey;
+    }
+
+    public function getLocalKey(): string
+    {
+        return $this->localKey;
     }
 }

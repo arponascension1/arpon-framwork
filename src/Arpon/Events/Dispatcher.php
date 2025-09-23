@@ -4,6 +4,7 @@ namespace Arpon\Events;
 
 use Closure;
 use Arpon\Contracts\Events\Dispatcher as DispatcherContract;
+use Exception;
 
 class Dispatcher implements DispatcherContract
 {
@@ -12,7 +13,7 @@ class Dispatcher implements DispatcherContract
      *
      * @var array
      */
-    protected $listeners = [];
+    protected array $listeners = [];
 
     /**
      * Register an event listener with the dispatcher.
@@ -21,7 +22,7 @@ class Dispatcher implements DispatcherContract
      * @param  mixed  $listener
      * @return void
      */
-    public function listen($events, $listener)
+    public function listen($events, $listener): void
     {
         foreach ((array) $events as $event) {
             $this->listeners[$event][] = $this->makeListener($listener);
@@ -32,9 +33,9 @@ class Dispatcher implements DispatcherContract
      * Make a queueable listener callable.
      *
      * @param  Closure|string  $listener
-     * @return Closure
+     * @return Closure Closure
      */
-    protected function makeListener($listener)
+    protected function makeListener($listener): Closure
     {
         if (is_string($listener)) {
             return $this->createClassListener($listener);
@@ -46,10 +47,10 @@ class Dispatcher implements DispatcherContract
     /**
      * Create a class based listener using the IoC container.
      *
-     * @param  string  $listener
-     * @return Closure
+     * @param string $listener
+     * @return Closure Closure
      */
-    protected function createClassListener($listener)
+    protected function createClassListener(string $listener): Closure
     {
         return function () use ($listener) {
             return call_user_func_array([app()->make($listener), 'handle'], func_get_args());
@@ -64,7 +65,7 @@ class Dispatcher implements DispatcherContract
      * @param  bool  $halt
      * @return array|null
      */
-    public function dispatch($event, $payload = [], $halt = false)
+    public function dispatch($event, $payload = [], $halt = false): ?array
     {
         $responses = [];
 
@@ -86,10 +87,10 @@ class Dispatcher implements DispatcherContract
     /**
      * Get all of the listeners for a given event name.
      *
-     * @param  string  $eventName
+     * @param string $eventName
      * @return array
      */
-    public function getListeners($eventName)
+    public function getListeners(string $eventName): array
     {
         return $this->listeners[$eventName] ?? [];
     }
@@ -100,7 +101,7 @@ class Dispatcher implements DispatcherContract
      * @param  string  $eventName
      * @return bool
      */
-    public function hasListeners($eventName)
+    public function hasListeners($eventName): bool
     {
         return isset($this->listeners[$eventName]) && count($this->listeners[$eventName]) > 0;
     }
@@ -108,10 +109,11 @@ class Dispatcher implements DispatcherContract
     /**
      * Register an event subscriber with the dispatcher.
      *
-     * @param  object|string  $subscriber
+     * @param object|string $subscriber
      * @return void
+     * @throws Exception
      */
-    public function subscribe($subscriber)
+    public function subscribe($subscriber): void
     {
         $subscriber = $this->resolveSubscriber($subscriber);
 
@@ -121,10 +123,11 @@ class Dispatcher implements DispatcherContract
     /**
      * Resolve the subscriber instance.
      *
-     * @param  object|string  $subscriber
+     * @param object|string $subscriber
      * @return mixed
+     * @throws Exception
      */
-    protected function resolveSubscriber($subscriber)
+    protected function resolveSubscriber(object|string $subscriber): mixed
     {
         if (is_object($subscriber)) {
             return $subscriber;

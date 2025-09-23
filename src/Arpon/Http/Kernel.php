@@ -64,6 +64,21 @@ class Kernel
         $this->exceptionHandler = $exceptionHandler;
     }
 
+    public function setRouteMiddleware(array $middleware): void
+    {
+        $this->routeMiddleware = $middleware;
+    }
+
+    public function setMiddlewareGroups(array $middlewareGroups): void
+    {
+        $this->middlewareGroups = $middlewareGroups;
+    }
+
+    public function setMiddleware(array $middleware): void
+    {
+        $this->middleware = $middleware;
+    }
+
     /**
      * @param Request $request
      * @return Response

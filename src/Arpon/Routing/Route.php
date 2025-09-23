@@ -12,7 +12,8 @@ class Route
     public array $middleware = [];
     protected array $wheres = [];
     protected array $parameters = [];
-    protected ?string $name = null;
+    protected ?string $name = null; // This is where the route name is stored
+    
     protected Router $router; // Added router property
     protected array $parameterNames = []; // Moved here
 
@@ -60,8 +61,8 @@ class Route
     public function name(string $name): static
     {
         $latestGroup = $this->router->getLatestGroup();
-        if (isset($latestGroup['name'])) {
-            $name = $latestGroup['name'] . $name;
+        if (isset($latestGroup['as'])) {
+            $name = $latestGroup['as'] . $name;
         }
 
         $this->name = $name;

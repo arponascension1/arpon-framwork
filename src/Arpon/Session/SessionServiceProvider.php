@@ -10,6 +10,11 @@ class SessionServiceProvider extends ServiceProvider
     {
         $this->app->singleton('session', function ($app) {
             $config = $app->make(\Arpon\Config\Repository::class);
+
+            if (defined('PHPUNIT_RUNNING')) {
+                $config->set('session.driver', 'array');
+            }
+
             return new SessionManager($config);
         });
     }

@@ -138,20 +138,20 @@ abstract class Relation
      */
     public function __call(string $method, array $parameters)
     {
-        try {
+        if (method_exists($this->query, $method)) {
             $result = $this->query->$method(...$parameters);
-            // If the result is the QueryBuilder itself, return $this (the Relation) for chaining.
+
             if ($result instanceof QueryBuilder) {
                 return $this;
             }
-            // Otherwise, return the result from the QueryBuilder (e.g., count, exists, etc.)
+
             return $result;
-        } catch (BadMethodCallException $e) {
-            throw new BadMethodCallException(sprintf(
-                'Call to undefined method %s::%s() on relation %s or %s::%s() on its QueryBuilder.',
-                static::class, $method, get_class($this), QueryBuilder::class, $method
-            ));
         }
+
+        throw new BadMethodCallException(sprintf(
+            'Call to undefined method %s::%s() on relation %s.',
+            static::class, $method, get_class($this)
+        ));
     }
 
     /**

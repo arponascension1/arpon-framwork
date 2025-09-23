@@ -18,13 +18,6 @@ class HasMany extends HasOneOrMany
      */
     public function getResults(): Collection
     {
-        // If the local key on the parent (used for joining) is null,
-        // it's unlikely to find related models.
-        if (is_null($this->parent->getAttribute($this->localKey))) {
-            return $this->newCollection(); // Return an empty collection
-        }
-        // The addConstraints method in HasOneOrMany already sets up the where clause.
-        // QueryBuilder::get() should return a Collection of hydrated Models.
         return $this->query->get();
     }
 

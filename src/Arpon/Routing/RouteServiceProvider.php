@@ -16,7 +16,6 @@ class RouteServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $router = $this->app->make('router');
-        require $this->app->basePath() . '/routes/web.php';
     }
 
     public function register(): void

@@ -110,9 +110,13 @@ class Router
             $merged['prefix'] = implode('/', array_map(fn($p) => trim($p, '/'), $merged['prefix']));
         }
 
-        // Handle name merging specifically
-        if (isset($lastGroup['name'], $attributes['name'])) {
-            $merged['name'] = $lastGroup['name'] . $attributes['name'];
+        // Handle 'as' (name prefix) merging specifically
+        if (isset($lastGroup['as']) && isset($attributes['as'])) {
+            $merged['as'] = $lastGroup['as'] . $attributes['as'];
+        } elseif (isset($lastGroup['as'])) {
+            $merged['as'] = $lastGroup['as'];
+        } elseif (isset($attributes['as'])) {
+            $merged['as'] = $attributes['as'];
         }
 
         return $merged;

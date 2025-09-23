@@ -1,13 +1,10 @@
 <?php
 
-// src/Arpon/Routing/RoutingServiceProvider.php
-
 namespace Arpon\Routing;
 
 use Arpon\Support\ServiceProvider;
 use Arpon\Http\Request;
-use Arpon\Routing\Redirector;
-use Arpon\Routing\UrlGenerator;
+
 
 class RoutingServiceProvider extends ServiceProvider
 {
@@ -16,6 +13,7 @@ class RoutingServiceProvider extends ServiceProvider
         
 
         $this->app->singleton('request', function ($app) {
+
             return Request::capture();
         });
 

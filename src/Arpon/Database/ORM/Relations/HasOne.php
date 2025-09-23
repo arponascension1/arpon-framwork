@@ -16,16 +16,13 @@ class HasOne extends HasOneOrMany
      * For HasOne, this is a single related model or null.
      * @return Model|null
      */
-    public function getResults(): ?Model
+    public function getResults(): Collection
     {
-        // If the local key on the parent (used for joining) is null,
-        // it's unlikely to find a related model.
         if (is_null($this->parent->getAttribute($this->localKey))) {
-            return null;
+            return $this->newCollection();
         }
-        // The addConstraints method in HasOneOrMany already sets up the where clause.
-        // QueryBuilder::first() should return a hydrated Model or null.
-        return $this->query->first();
+
+        return $this->query->get();
     }
 
     /**

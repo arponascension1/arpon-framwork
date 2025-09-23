@@ -307,4 +307,65 @@ class Collection implements ArrayAccess, Countable, IteratorAggregate, JsonSeria
     {
         return new static(array_filter($this->items, $callback, ARRAY_FILTER_USE_BOTH));
     }
+
+    /**
+     * Sort the collection by the given callback in descending order.
+     *
+     * @param  callable|string|null  $callback
+     * @return static
+     */
+    public function sortByDesc(callable|string $callback = null): static
+    {
+        return $this->sortBy($callback, true);
+    }
+
+    /**
+     * Sort the collection by the given callback.
+     *
+     * @param  callable|string|null  $callback
+     * @param  bool  $descending
+     * @return static
+     */
+    public function sortBy(callable|string $callback = null, bool $descending = false): static
+    {
+        $items = $this->items;
+
+        // If no callback is provided, sort by the values themselves.
+        if (is_null($callback)) {
+            if ($descending) {
+                arsort($items);
+            } else {
+                asort($items);
+            }
+            return new static($items);
+        }
+
+        // If a string is provided, sort by that attribute.
+        if (is_string($callback)) {
+            $attribute = $callback;
+            $callback = function ($a, $b) use ($attribute) {
+                $aValue = is_object($a) ? $a->{$attribute} : $a[$attribute];
+                $bValue = is_object($b) ? $b->{$attribute} : $b[$attribute];
+                return $aValue <=> $bValue;
+            };
+        }
+
+        uasort($items, $callback);
+
+        if ($descending) {
+            $items = array_reverse($items, true);
+        }
+
+        return new static($items);
+    }
+
+    /**
+     * Reset the keys of the underlying array.
+     *
+     * @return static
+     */
+    public function values(): static
+    {
+        return new static(array_values($this->items));
+    }
 }

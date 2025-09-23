@@ -6,8 +6,6 @@ use Arpon\Database\ORM\Collection;
 use Arpon\Database\ORM\Model;
 use Arpon\Database\Query\Builder as QueryBuilder;
 
-// For type hint
-
 class BelongsTo extends Relation
 {
     /**
@@ -133,17 +131,9 @@ class BelongsTo extends Relation
      * For BelongsTo, this is a single owner model or null.
      * @return Model|null
      */
-    public function getResults(): ?Model
+    public function getResults(): Collection
     {
-        // Apply constraints when results are actually fetched
-        $this->addConstraints();
-
-        // If the foreign key on the child is null, no parent can be found.
-        // addConstraints now handles this by making the query return no results.
-        // if (\is_null($this->parent->getAttribute($this->foreignKey))) {
-        //     return null;
-        // }
-        return $this->query->first(); // QueryBuilder::first() should return a Model or null
+        return $this->query->get();
     }
 
     /**
@@ -161,6 +151,16 @@ class BelongsTo extends Relation
             }
         }
         return \array_values(\array_unique(\array_filter($keys)));
+    }
+
+    public function getForeignKey(): string
+    {
+        return $this->foreignKey;
+    }
+
+    public function getOwnerKey(): string
+    {
+        return $this->ownerKey;
     }
 
     /**

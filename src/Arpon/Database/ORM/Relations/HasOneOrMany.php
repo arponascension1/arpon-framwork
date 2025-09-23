@@ -5,8 +5,6 @@ namespace Arpon\Database\ORM\Relations;
 use Arpon\Database\ORM\Collection;
 use Arpon\Database\ORM\Model;
 use Arpon\Database\Query\Builder as QueryBuilder;
-use function Arpon\Database\ORM\Relations\last;
-use function MyFramework\Database\ORM\Relations\last;
 
 abstract class HasOneOrMany extends Relation
 {
@@ -40,7 +38,7 @@ abstract class HasOneOrMany extends Relation
         parent::__construct($query, $parent);
 
         // Add constraints after parent constructor sets up $this->related
-        $this->addConstraints();
+        // $this->addConstraints(); // Removed for eager loading fix
     }
 
     /**
@@ -87,24 +85,19 @@ abstract class HasOneOrMany extends Relation
      */
     protected function matchOneOrMany(array $models, Collection $results, string $relation, string $type): array
     {
-        // The foreign key on the related model (e.g., post.user_id)
         $foreignKeyColumn = last(explode('.', $this->foreignKey));
 
-        // Build a dictionary of related models, keyed by the foreign key.
         $dictionary = $this->buildDictionary($results, $foreignKeyColumn);
 
-        // Assign the matched related model(s) to each parent model.
         foreach ($models as $model) {
-            // Get the local key value from the parent model (e.g., user.id)
             $key = $model->getAttribute($this->localKey);
 
             if (isset($dictionary[$key])) {
                 $value = ($type === 'one')
-                    ? (reset($dictionary[$key]) ?: null) // Get the first related model for HasOne
+                    ? ($this->newCollection($dictionary[$key])->first() ?: null) // Get the first related model for HasOne
                     : $this->newCollection($dictionary[$key]); // Get a collection for HasMany
                 $model->setRelation($relation, $value);
             }
-            // If no match, the relation remains as initialized (null for HasOne, empty Collection for HasMany)
         }
         return $models;
     }
@@ -140,6 +133,16 @@ abstract class HasOneOrMany extends Relation
             }
         }
         return array_values(array_unique(array_filter($keys)));
+    }
+
+    public function getForeignKey(): string
+    {
+        return $this->foreignKey;
+    }
+
+    public function getLocalKey(): string
+    {
+        return $this->localKey;
     }
 
     /**

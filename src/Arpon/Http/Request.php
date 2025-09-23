@@ -25,7 +25,7 @@ class Request
     {
         $this->query = $_GET;
         $this->request = $_POST;
-        $this->headers = new HeaderBag(getallheaders());
+        $this->headers = new HeaderBag(function_exists('getallheaders') ? getallheaders() : []);
 
         // Determine the HTTP method, considering method spoofing
         if (isset($_SERVER['REQUEST_METHOD'])) {
@@ -107,7 +107,7 @@ class Request
 
     protected function preparePathInfo(): string
     {
-        $requestUri = $_SERVER['REQUEST_URI'];
+        $requestUri = $_SERVER['REQUEST_URI'] ?? '';
         $queryString = isset($_SERVER['QUERY_STRING']) ? '?' . $_SERVER['QUERY_STRING'] : '';
         $path = str_replace($queryString, '', $requestUri);
         return trim($path, '/');
@@ -208,9 +208,9 @@ class Request
 
     public function fullUrl(): string
     {
-        $scheme = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http';
-        $host = $_SERVER['HTTP_HOST'];
-        $uri = $_SERVER['REQUEST_URI'];
+        $scheme = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') || (isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == 443) ? 'https' : 'http';
+        $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+        $uri = $_SERVER['REQUEST_URI'] ?? '';
 
         return "{$scheme}://{$host}{$uri}";
     }

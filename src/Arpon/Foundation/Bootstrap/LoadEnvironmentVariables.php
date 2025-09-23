@@ -9,8 +9,10 @@ class LoadEnvironmentVariables
 {
     public function bootstrap(Application $app): void
     {
-        if (file_exists($app->environmentPath() . '/' . $app->environmentFile())) {
-            Dotenv::createImmutable($app->environmentPath(), $app->environmentFile())->load();
+        $file = defined('PHPUNIT_RUNNING') ? '.env.testing' : $app->environmentFile();
+
+        if (file_exists($app->environmentPath() . '/' . $file)) {
+            Dotenv::createImmutable($app->environmentPath(), $file)->load();
         }
     }
 }

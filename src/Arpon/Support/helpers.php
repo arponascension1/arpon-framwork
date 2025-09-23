@@ -5,6 +5,7 @@ use Arpon\Container\Container;
 use Arpon\Http\Request;
 use Arpon\Support\Facades\Facade;
 use Arpon\Session\SessionManager;
+use JetBrains\PhpStorm\NoReturn;
 
 if (!function_exists('app')) {
     function app($abstract = null)
@@ -189,12 +190,13 @@ if (!function_exists('partial')) {
 }
 
 if (!function_exists('dd')) {
+    #[NoReturn]
     function dd(...$args): void
     {
         echo '<style>body { margin: 0; }</style>';
         echo '<pre style="background-color: #333; color: #0f0; padding: 10px; margin: 0; font-family: monospace; white-space: pre-wrap; word-wrap: break-word;">';
         foreach ($args as $x) {
-            var_dump($x);
+            
         }
         echo '</pre>';
         die(1);
@@ -222,7 +224,7 @@ if (!function_exists('asset')) {
 if (!function_exists('csrf_token')) {
     function csrf_token()
     {
-        return session()->get('_token');
+        return session()->token();
     }
 }
 

@@ -3,14 +3,16 @@
 namespace Arpon\Foundation\Bootstrap;
 
 use Arpon\Foundation\Application;
+use Exception;
 
 class RegisterProviders
 {
     /**
      * Bootstrap the given application.
      *
-     * @param  \Arpon\Foundation\Application  $app
+     * @param Application $app
      * @return void
+     * @throws Exception
      */
     public function bootstrap(Application $app): void
     {

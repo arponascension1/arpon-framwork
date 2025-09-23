@@ -4,7 +4,7 @@ namespace Arpon\Database\ORM\Concerns;
 
 use Arpon\Database\ORM\Collection;
 use Arpon\Database\ORM\Model;
-use MyFramework\Support\Facades\DB;
+use Arpon\Support\Facades\DB;
 
 // For direct DB access for pivot table
 

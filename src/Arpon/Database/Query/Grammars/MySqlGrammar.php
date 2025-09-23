@@ -83,6 +83,8 @@ class MySqlGrammar extends Grammar
         return ['TRUNCATE TABLE ' . $this->wrapTable($query->from) => []];
     }
 
+    
+
     // --- MySQL Specific Date/Time Where Compilers ---
     protected function compileWhereDate(QueryBuilder $query, array $where): string
     {
@@ -133,12 +135,19 @@ class MySqlGrammar extends Grammar
      * @param  array  $columns
      * @return string
      */
-    public function compileCreate(\Arpon\Database\Schema\Blueprint $blueprint, array $columns): string
+    public function compileCreate(\Arpon\Database\Schema\Blueprint $blueprint, array $columns, array $commands = []): string
     {
         $columnsSql = [];
         foreach ($columns as $column) {
             $columnsSql[] = $this->compileColumn($column);
         }
+
+        foreach ($commands as $command) {
+            if ($command instanceof \Arpon\Database\Schema\ForeignKeyDefinition) {
+                $columnsSql[] = $this->compileForeignInCreate($blueprint, $command->toSql());
+            }
+        }
+
         return 'CREATE TABLE ' . $this->wrapTable($blueprint->getTable()) . ' (' . implode(', ', $columnsSql) . ')';
     }
 
@@ -252,9 +261,33 @@ class MySqlGrammar extends Grammar
 
     public function compileForeign(Blueprint $blueprint, array $command): string
     {
+        $indexName = $command['index_name'] ?? $blueprint->getTable() . '_' . $command['column'] . '_foreign';
+
         $sql = sprintf('ALTER TABLE %s ADD CONSTRAINT %s FOREIGN KEY (%s) REFERENCES %s (%s)',
             $this->wrapTable($blueprint->getTable()),
-            $this->wrapValueSegment($command['index_name'] ?? $blueprint->getTable() . '_' . $command['column'] . '_foreign'),
+            $this->wrapValueSegment($indexName),
+            $this->wrap($command['column']),
+            $this->wrapTable($command['on']),
+            $this->wrap($command['references'])
+        );
+
+        if (isset($command['onDelete'])) {
+            $sql .= ' ON DELETE ' . strtoupper($command['onDelete']);
+        }
+
+        if (isset($command['onUpdate'])) {
+            $sql .= ' ON UPDATE ' . strtoupper($command['onUpdate']);
+        }
+
+        return $sql;
+    }
+
+    protected function compileForeignInCreate(Blueprint $blueprint, array $command): string
+    {
+        $indexName = $command['index_name'] ?? $blueprint->getTable() . '_' . $command['column'] . '_foreign';
+
+        $sql = sprintf('CONSTRAINT %s FOREIGN KEY (%s) REFERENCES %s (%s)',
+            $this->wrapValueSegment($indexName),
             $this->wrap($command['column']),
             $this->wrapTable($command['on']),
             $this->wrap($command['references'])

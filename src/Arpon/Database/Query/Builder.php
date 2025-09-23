@@ -2,7 +2,18 @@
 
 namespace Arpon\Database\Query;
 
+if (!function_exists('Arpon\Database\Query\last')) {
+    function last(array $array)
+    {
+        return end($array);
+    }
+}
+
+use Arpon\Database\ORM\Relations\BelongsTo;
+use Arpon\Database\ORM\Relations\BelongsToMany;
+use Arpon\Database\ORM\Relations\HasOneOrMany;
 use Arpon\Database\Pagination\LengthAwarePaginator;
+use Arpon\Database\Query\Grammars\SQLiteGrammar;
 use Closure;
 use Arpon\Database\DatabaseManager;
 use Arpon\Database\ORM\Collection;
@@ -13,13 +24,6 @@ use InvalidArgumentException;
 use PDO;
 use PDOStatement;
 use Throwable;
-
-// For nested where, joins, etc.
-// For model context
-// For returning collections of models
-// For transactions
-// For has/whereHas
-// Add this line
 
 class Builder
 {
@@ -138,8 +142,6 @@ class Builder
             $join->on($first, $operator, $second);
         }
         $this->joins[] = $join;
-        // Bindings for join conditions should be handled by JoinClause::getBindings and added here
-        $this->addBinding($join->getBindings(), 'join');
         return $this;
     }
 
@@ -150,6 +152,15 @@ class Builder
 
     public function rightJoin(string $table, string|Closure $first, ?string $operator = null, ?string $second = null): static
     {
+        if ($this->grammar instanceof SQLiteGrammar) {
+            // SQLite does not support RIGHT JOIN, so we convert it to a LEFT JOIN
+            // by swapping the main table with the join table.
+            $fromTable = $this->from;
+            $this->from = $table;
+
+            return $this->join($fromTable, $first, $operator, $second, 'LEFT');
+        }
+
         return $this->join($table, $first, $operator, $second, 'RIGHT');
     }
 
@@ -683,6 +694,61 @@ class Builder
         return $this;
     }
 
+    public function withCount(string|array $relations): static
+    {
+        if (is_null($this->columns)) {
+            $this->select();
+        }
+
+        $relations = is_string($relations) ? func_get_args() : $relations;
+
+        foreach ($this->parseRelations($relations) as $name => $constraints) {
+            if (! $this->model || !method_exists($this->model, $name)) {
+                throw new InvalidArgumentException("Invalid relation name provided to withCount or model context not set.");
+            }
+
+            $relation = $this->model->newInstance()->$name();
+            if (!$relation instanceof Relation) {
+                throw new InvalidArgumentException("Method [{$name}] on model [" . get_class($this->model) . "] did not return a Relation object.");
+            }
+
+            $subQuery = $relation->getRelated()->newQuery();
+
+            // This logic is borrowed from the whereHas implementation
+            if ($relation instanceof HasOneOrMany) {
+                $foreignKeyColumn = last(explode('.', $relation->getForeignKey()));
+                $localKey = $relation->getLocalKey();
+                $subQuery->whereColumn($foreignKeyColumn, '=', $this->from . '.' . $localKey);
+            } elseif ($relation instanceof BelongsTo) {
+                $foreignKey = $relation->getForeignKey();
+                $ownerKey = $relation->getOwnerKey();
+                $subQuery->whereColumn($this->from . '.' . $foreignKey, '=', $relation->getRelated()->getTable() . '.' . $ownerKey);
+            } elseif ($relation instanceof BelongsToMany) {
+                $pivotTable = $relation->getTable();
+                $parentKey = $relation->getParentKey();
+                $relatedKey = $relation->getRelatedKey();
+                $parentLocalKey = $relation->getParentLocalKey();
+
+                $subQuery->join($pivotTable, $relation->getRelated()->getTable() . '.' . $relation->getRelatedLocalKey(), '=', $pivotTable . '.' . $relatedKey);
+                $subQuery->whereColumn($this->from . '.' . $parentLocalKey, '=', $pivotTable . '.' . $parentKey);
+            }
+
+            if ($constraints instanceof Closure) {
+                $constraints($subQuery);
+            }
+
+            $countQuery = $subQuery->selectRaw('count(*)')->toSql();
+            $bindings = $subQuery->getBindings();
+
+            $this->addSelect(new Expression("($countQuery) as {$name}_count"));
+            if($bindings) {
+                $this->addBinding($bindings, 'select');
+            }
+        }
+
+        return $this;
+    }
+
     public function eagerLoadRelations(array $models): void
     {
         if (empty($models) || empty($this->eagerLoad) || !$this->model) {
@@ -891,15 +957,11 @@ class Builder
 
     public function dd(): void
     {
-        \var_dump($this->toSql());
-        \var_dump($this->getBindings());
         die(1);
     }
 
     public function dump(): static
     {
-        \var_dump($this->toSql());
-        \var_dump($this->getBindings());
         return $this;
     }
 
@@ -941,8 +1003,8 @@ class Builder
             $perPage,
             $page,
             [
-                'path' => \request()->path(),
-                'query' => \request()->query(), // Pass all current query parameters
+                'path' => request()->path(),
+                'query' => request()->query(),
                 'pageName' => $pageName,
             ]
         );
@@ -953,12 +1015,106 @@ class Builder
         return $this->skip(($page - 1) * $perPage)->take($perPage);
     }
 
-    public function whereHas(string $relationName, ?Closure $callback = null, string $operator = '>=', int $count = 1): static
+    public function whereExists(Closure $callback, string $boolean = 'AND', bool $not = false): static
     {
-        if (! $this->model || !\method_exists($this->model, $relationName)) {
+        $type = $not ? 'NotExists' : 'Exists';
+
+        $query = $this->newQuery();
+
+        $callback($query);
+
+        $this->wheres[] = compact('type', 'query', 'boolean');
+
+        return $this;
+    }
+
+    public function orWhereExists(Closure $callback, bool $not = false): static
+    {
+        return $this->whereExists($callback, 'OR', $not);
+    }
+
+    public function whereNotExists(Closure $callback, string $boolean = 'AND'): static
+    {
+        return $this->whereExists($callback, $boolean, true);
+    }
+
+    public function orWhereNotExists(Closure $callback): static
+    {
+        return $this->orWhereExists($callback, true);
+    }
+
+    public function whereHas(string|array $relationName, ?Closure $callback = null, string $operator = '>=', int $count = 1): static
+    {
+        if (is_array($relationName) || str_contains($relationName, '.')) {
+            return $this->whereHasNested($relationName, $callback, $operator, $count);
+        }
+
+        if (! $this->model || !method_exists($this->model, $relationName)) {
             throw new InvalidArgumentException("Invalid relation name provided to whereHas or model context not set.");
         }
-        throw new \BadMethodCallException('whereHas is not fully implemented yet.');
+
+        $relation = $this->model->newInstance()->$relationName();
+
+        if (!$relation instanceof Relation) {
+            throw new InvalidArgumentException("Method [{$relationName}] on model [" . get_class($this->model) . "] did not return a Relation object.");
+        }
+
+        // Build the subquery
+        $subQuery = $relation->getRelated()->newQuery();
+
+        // Apply the relation's constraints to the subquery
+        if ($relation instanceof \Arpon\Database\ORM\Relations\HasOneOrMany) {
+            $foreignKeyColumn = last(explode('.', $relation->getForeignKey()));
+            $localKey = $relation->getLocalKey();
+            $subQuery->whereColumn($foreignKeyColumn, '=', $this->from . '.' . $localKey);
+        } elseif ($relation instanceof \Arpon\Database\ORM\Relations\BelongsTo) {
+            $foreignKey = $relation->getForeignKey();
+            $ownerKey = $relation->getOwnerKey();
+            $subQuery->whereColumn($this->from . '.' . $foreignKey, '=', $relation->getRelated()->getTable() . '.' . $ownerKey);
+        } elseif ($relation instanceof \Arpon\Database\ORM\Relations\BelongsToMany) {
+            $pivotTable = $relation->getTable();
+            $parentKey = $relation->getParentKey();
+            $relatedKey = $relation->getRelatedKey();
+            $parentLocalKey = $relation->getParentLocalKey();
+
+            $subQuery->join($pivotTable, $relation->getRelated()->getTable() . '.' . $relation->getRelatedLocalKey(), '=', $pivotTable . '.' . $relatedKey);
+            $subQuery->whereColumn($this->from . '.' . $parentLocalKey, '=', $pivotTable . '.' . $parentKey);
+        }
+
+        // Apply the user's callback to the subquery
+        if ($callback) {
+            $callback($subQuery);
+        }
+
+        // Add the whereExists clause to the main query
+        return $this->whereExists(function ($query) use ($subQuery) {
+            $query->setModel($subQuery->getModelInstance());
+            $query->table($subQuery->from);
+            $query->wheres = $subQuery->wheres;
+            $query->bindings['where'] = $subQuery->bindings['where'];
+            $query->joins = $subQuery->joins; // Include joins from subquery
+        });
+    }
+
+    protected function whereHasNested(string|array $relations, ?Closure $callback, string $operator = '>=', int $count = 1): static
+    {
+        if (is_string($relations)) {
+            $relations = explode('.', $relations);
+        }
+
+        $currentRelation = array_shift($relations);
+
+        $nestedCallback = function ($query) use ($relations, $callback, $operator, $count) {
+            if (!empty($relations)) {
+                $query->whereHas($relations, $callback, $operator, $count); // Pass array directly
+            } else {
+                if ($callback) {
+                    $callback($query);
+                }
+            }
+        };
+
+        return $this->whereHas($currentRelation, $nestedCallback, $operator, $count);
     }
 
 }

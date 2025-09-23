@@ -11,10 +11,10 @@ class Migrator
     protected DatabaseManager $db;
     protected string $migrationPath;
 
-    public function __construct(DatabaseManager $db)
+    public function __construct(DatabaseManager $db, \Arpon\Foundation\Application $app)
     {
         $this->db = $db;
-        $this->migrationPath = BASE_PATH . '/database/migrations';
+        $this->migrationPath = $app->databasePath() . '/migrations';
         Schema::setDatabaseManager($db);
     }
 

@@ -40,6 +40,17 @@ abstract class Grammar
         return [];
     }
 
+    /**
+     * Check if a value is a column reference.
+     *
+     * @param  string  $value
+     * @return bool
+     */
+    public function isColumn(string $value): bool
+    {
+        return str_contains($value, '.');
+    }
+
 
     /**
      * Compile a select query into SQL.
@@ -208,6 +219,16 @@ abstract class Grammar
     protected function compileWhereRaw(QueryBuilder $query, array $where): string
     {
         return $where['sql'];
+    }
+
+    protected function compileWhereExists(QueryBuilder $query, array $where): string
+    {
+        return 'EXISTS (' . $this->compileSelect($where['query']) . ')';
+    }
+
+    protected function compileWhereNotExists(QueryBuilder $query, array $where): string
+    {
+        return 'NOT EXISTS (' . $this->compileSelect($where['query']) . ')';
     }
 
     // --- NEW Where Clause Compilers ---

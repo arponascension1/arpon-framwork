@@ -56,6 +56,16 @@ class Carbon
         return new static($this->date->modify("+{$minutes} minutes"));
     }
 
+    public function subMinutes($minutes)
+    {
+        return new static($this->date->modify("-{$minutes} minutes"));
+    }
+
+    public function subHours($hours)
+    {
+        return new static($this->date->modify("-{$hours} hours"));
+    }
+
     public function __toString()
     {
         return $this->format('Y-m-d H:i:s');

@@ -130,19 +130,22 @@ trait QueriesRelationships
         ?string $parentForeignKey = null,
         ?string $relatedForeignKey = null,
         ?string $parentLocalKey = null,
-        ?string $relatedLocalKey = null
+        ?string $relatedLocalKey = null,
+        ?string $relation = null
     ): BelongsToMany {
         /** @var Model $instance */
         $instance = new $related; // Instance of the related model (e.g., Role)
 
-        $backtrace = \debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 3);
-        if (isset($backtrace[2]['function'])) {
-            $relationName = $backtrace[2]['function'];
-        } else {
-            throw new \LogicException(
-                "Could not automatically determine relationship name for BelongsToMany on " . static::class .
-                ". Please provide it as an argument if conventions are not met. Backtrace: " . \json_encode($backtrace)
-            );
+        if (is_null($relation)) {
+            $backtrace = \debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 3);
+            if (isset($backtrace[2]['function'])) {
+                $relation = $backtrace[2]['function'];
+            } else {
+                throw new \LogicException(
+                    "Could not automatically determine relationship name for BelongsToMany on " . static::class .
+                    ". Please provide it as an argument if conventions are not met. Backtrace: " . \json_encode($backtrace)
+                );
+            }
         }
 
         // Guess pivot table name: alphabetical order of singular model names (e.g., role_user)
@@ -159,7 +162,7 @@ trait QueriesRelationships
         return new BelongsToMany(
             $instance->newQuery(), $this, $table,
             $parentForeignKey, $relatedForeignKey,
-            $parentLocalKey, $relatedLocalKey, $relationName
+            $parentLocalKey, $relatedLocalKey, $relation
         );
     }
 
