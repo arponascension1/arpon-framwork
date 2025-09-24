@@ -196,7 +196,7 @@ if (!function_exists('dd')) {
         echo '<style>body { margin: 0; }</style>';
         echo '<pre style="background-color: #333; color: #0f0; padding: 10px; margin: 0; font-family: monospace; white-space: pre-wrap; word-wrap: break-word;">';
         foreach ($args as $x) {
-            
+            var_dump($x);
         }
         echo '</pre>';
         die(1);
