@@ -1,5 +1,5 @@
 {
-    "name": "arponascension1/arpon-framework",
+    "name": "arpon/framework",
     "description": "A modern Laravel-inspired PHP framework with advanced routing, Eloquent ORM, authentication, and more",
     "keywords": ["framework", "mvc", "laravel", "eloquent", "routing", "php"],
     "license": "MIT",
