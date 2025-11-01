@@ -12,10 +12,10 @@
         }
     ],
     "require": {
-        "php": "^8.0",
-        "ext-pdo": "*",
-        "ext-mbstring": "*",
-        "ext-openssl": "*"
+         "vlucas/phpdotenv": "5.*",
+    "ext-pdo": "*",
+    "ext-fileinfo": "*",
+    "phpmailer/phpmailer": "6.*"
     },
     "autoload": {
         "psr-4": {
@@ -26,6 +26,7 @@
             "src/Arpon/Database/helpers.php"
         ]
     },
+    
     "minimum-stability": "stable",
     "prefer-stable": true
 }
