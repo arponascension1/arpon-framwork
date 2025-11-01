@@ -1,0 +1,31 @@
+{
+    "name": "arponascension1/arpon-framework",
+    "description": "A modern Laravel-inspired PHP framework with advanced routing, Eloquent ORM, authentication, and more",
+    "keywords": ["framework", "mvc", "laravel", "eloquent", "routing", "php"],
+    "license": "MIT",
+    "type": "library",
+    "version": "1.0.0",
+    "authors": [
+        {
+            "name": "Arpon Ascension",
+            "email": "arponascension20@gmail.com"
+        }
+    ],
+    "require": {
+        "php": "^8.0",
+        "ext-pdo": "*",
+        "ext-mbstring": "*",
+        "ext-openssl": "*"
+    },
+    "autoload": {
+        "psr-4": {
+            "Arpon\\": "src/Arpon/"
+        },
+        "files": [
+            "src/Arpon/Support/helpers.php",
+            "src/Arpon/Database/helpers.php"
+        ]
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
